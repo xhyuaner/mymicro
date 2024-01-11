@@ -1,6 +1,8 @@
 package rpcserver
 
 import (
+	"context"
+	"mymicro/pkg/log"
 	"net"
 	"net/url"
 	"time"
@@ -20,6 +22,7 @@ type ServerOption func(o *Server)
 type Server struct {
 	*grpc.Server
 
+	baseCtx            context.Context
 	address            string
 	unaryInterceptors  []grpc.UnaryServerInterceptor
 	streamInterceptors []grpc.StreamServerInterceptor
@@ -99,6 +102,23 @@ func NewServer(opts ...ServerOption) *Server {
 	reflection.Register(srv.Server)
 
 	return &srv
+}
+
+func (s *Server) Start(ctx context.Context) error {
+	if err := s.listenAndEndpoint(); err != nil {
+		return err
+	}
+	s.baseCtx = ctx
+	log.Infof("[gRPC] server listening on: %s", s.lis.Addr().String())
+	s.health.Resume()
+	return s.Serve(s.lis)
+}
+
+func (s *Server) Stop(_ context.Context) error {
+	s.health.Shutdown()
+	s.GracefulStop()
+	log.Info("[gRPC] server stopping")
+	return nil
 }
 
 func WithAddress(address string) ServerOption {

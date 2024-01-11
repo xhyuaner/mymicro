@@ -66,12 +66,10 @@ func (a *App) Run() error {
 	//}
 
 	go func() {
-		// TODO: Start方法待完善
-		//err := a.opts.rpcServer.Start()
-		//if err != nil {
-		//	panic(err)
-		//}
-		return
+		err := a.opts.rpcServer.Start(context.Background())
+		if err != nil {
+			panic(err)
+		}
 	}()
 
 	// 注册服务
