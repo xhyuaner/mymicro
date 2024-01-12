@@ -10,8 +10,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"golang.org/x/sync/errgroup"
 
 	"mymicro/micro/registry"
+	ms "mymicro/micro/server"
 	"mymicro/pkg/log"
 )
 
@@ -20,6 +22,8 @@ type App struct {
 
 	lk       sync.Mutex
 	instance *registry.ServiceInstance
+
+	cancel func()
 }
 
 func New(opts ...Option) *App {
@@ -53,30 +57,60 @@ func (a *App) Run() error {
 	a.instance = instance
 	a.lk.Unlock()
 
-	//if a.opts.rpcServer != nil {
-	//	// 启动rpc服务
-	//	a.opts.rpcServer.Server()
-	//}
+	// 启动所有服务
+	var servers []ms.Server
+	if a.opts.restServer != nil {
+		servers = append(servers, a.opts.restServer)
+	}
+	if a.opts.rpcServer != nil {
+		servers = append(servers, a.opts.rpcServer)
+	}
+	// 保证多个server之前的状态同步
+	ctx, cancel := context.WithCancel(context.Background())
+	a.cancel = cancel
+	eg, ctx := errgroup.WithContext(ctx)
+	wg := sync.WaitGroup{}
+	for _, srv := range servers {
+		// 监听服务状态
+		eg.Go(func() error {
+			<-ctx.Done() // 等待终止信号
+			// 处理stop超时
+			sctx, cancel := context.WithTimeout(context.Background(), a.opts.stopTimeout)
+			defer cancel()
+			return srv.Stop(sctx)
+		})
+		wg.Add(1)
+		// 启动服务
+		eg.Go(func() error {
+			wg.Done()
+			log.Info("Start server")
+			return srv.Start(ctx)
+		})
+	}
 
+	wg.Wait()
+	//// 启动rpcServer
 	//if a.opts.rpcServer != nil {
-	//	err := a.opts.rpcServer.Start()
-	//	if err != nil {
-	//		return err
-	//	}
+	//	// 监听服务状态
+	//	eg.Go(func() error {
+	//		<-ctx.Done() // 等待终止信号
+	//		// 处理stop超时
+	//		sctx, cancel := context.WithTimeout(context.Background(), a.opts.stopTimeout)
+	//		defer cancel()
+	//		return a.opts.rpcServer.Stop(sctx)
+	//	})
+	//	// 启动服务
+	//	eg.Go(func() error {
+	//		log.Info("Start rpc server")
+	//		return a.opts.rpcServer.Start(ctx)
+	//	})
 	//}
-
-	go func() {
-		err := a.opts.rpcServer.Start(context.Background())
-		if err != nil {
-			panic(err)
-		}
-	}()
 
 	// 注册服务
 	if a.opts.registrar != nil {
-		rctx, rcancel := context.WithTimeout(context.Background(), a.opts.registrarTimeout)
-		defer rcancel()
-		err := a.opts.registrar.Register(rctx, instance)
+		ctx, cancel := context.WithTimeout(context.Background(), a.opts.registrarTimeout)
+		defer cancel()
+		err := a.opts.registrar.Register(ctx, instance)
 		if err != nil {
 			log.Errorf("register service error: %s", err)
 			//fmt.Printf("register service error: %s", err)
@@ -87,7 +121,17 @@ func (a *App) Run() error {
 	// 监听退出信号
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, a.opts.sigs...)
-	<-c
+	eg.Go(func() error {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-c:
+			return a.Stop()
+		}
+	})
+	if err := eg.Wait(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -105,6 +149,9 @@ func (a *App) Stop() error {
 			//fmt.Printf("deregister service error: %s", err)
 			return err
 		}
+	}
+	if a.cancel != nil {
+		a.cancel()
 	}
 	return nil
 }

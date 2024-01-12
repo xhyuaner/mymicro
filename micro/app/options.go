@@ -1,6 +1,7 @@
 package app
 
 import (
+	"mymicro/micro/server/restserver"
 	"mymicro/micro/server/rpcserver"
 	"net/url"
 	"os"
@@ -21,7 +22,8 @@ type options struct {
 	registrarTimeout time.Duration
 	stopTimeout      time.Duration
 
-	rpcServer *rpcserver.Server
+	rpcServer  *rpcserver.Server
+	restServer *restserver.Server
 }
 
 func WithRegistrar(registrar registry.Registrar) Option {
@@ -39,6 +41,12 @@ func WithEndpoints(endpoints []*url.URL) Option {
 func WithRPCServer(server *rpcserver.Server) Option {
 	return func(o *options) {
 		o.rpcServer = server
+	}
+}
+
+func WithRestServer(server *restserver.Server) Option {
+	return func(o *options) {
+		o.restServer = server
 	}
 }
 

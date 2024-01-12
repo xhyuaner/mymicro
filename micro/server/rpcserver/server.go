@@ -105,9 +105,6 @@ func NewServer(opts ...ServerOption) *Server {
 }
 
 func (s *Server) Start(ctx context.Context) error {
-	if err := s.listenAndEndpoint(); err != nil {
-		return err
-	}
 	s.baseCtx = ctx
 	log.Infof("[gRPC] server listening on: %s", s.lis.Addr().String())
 	s.health.Resume()
@@ -117,7 +114,7 @@ func (s *Server) Start(ctx context.Context) error {
 func (s *Server) Stop(_ context.Context) error {
 	s.health.Shutdown()
 	s.GracefulStop()
-	log.Info("[gRPC] server stopping")
+	log.Info("[gRPC] server stopped")
 	return nil
 }
 
