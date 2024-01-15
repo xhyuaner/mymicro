@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	apimetadata "mymicro/api/metadata"
 	srvintc "mymicro/micro/server/rpcserver/serverinterceptors"
 	"mymicro/pkg/host"
@@ -70,7 +71,8 @@ func NewServer(opts ...ServerOption) *Server {
 	// 如果用户不设置拦截器，则自动默认加上一些必须的拦截器，例如：recover, timeout, tracing
 	unaryInts := []grpc.UnaryServerInterceptor{
 		srvintc.UnaryRecoverInterceptor,
-		//srvintc.UnaryTimeoutInterceptor(srv.timeout),
+		srvintc.UnaryTimeoutInterceptor(srv.timeout),
+		otelgrpc.UnaryServerInterceptor(),
 	}
 	if srv.timeout > 0 {
 		unaryInts = append(unaryInts, srvintc.UnaryTimeoutInterceptor(srv.timeout))

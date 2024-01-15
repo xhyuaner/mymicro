@@ -2,15 +2,16 @@ package rpcserver
 
 import (
 	"context"
-	"mymicro/micro/server/rpcserver/clientinterptors"
-	"mymicro/micro/server/rpcserver/resolver/discovery"
-	"mymicro/pkg/log"
-
-	grpcInsecure "google.golang.org/grpc/credentials/insecure"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"time"
 
 	"google.golang.org/grpc"
+	grpcInsecure "google.golang.org/grpc/credentials/insecure"
+
 	"mymicro/micro/registry"
-	"time"
+	"mymicro/micro/server/rpcserver/clientinterceptors"
+	"mymicro/micro/server/rpcserver/resolver/discovery"
+	"mymicro/pkg/log"
 )
 
 type ClientOption func(o *clientOptions)
@@ -23,8 +24,14 @@ type clientOptions struct {
 	streamInterceptors []grpc.StreamClientInterceptor
 	rpcOpts            []grpc.DialOption
 	balancerName       string
+	logger             log.LogHelper
+	enableTracing      bool
+}
 
-	logger log.LogHelper
+func WithEnableTracing(enable bool) ClientOption {
+	return func(o *clientOptions) {
+		o.enableTracing = enable
+	}
 }
 
 func WithEndpoint(endpoint string) ClientOption {
@@ -78,8 +85,9 @@ func Dail(ctx context.Context, opts ...ClientOption) (*grpc.ClientConn, error) {
 
 func dail(ctx context.Context, insecure bool, opts ...ClientOption) (*grpc.ClientConn, error) {
 	options := clientOptions{
-		timeout:      2000 * time.Millisecond,
-		balancerName: "round_robin",
+		timeout:       2000 * time.Millisecond,
+		balancerName:  "round_robin",
+		enableTracing: true,
 	}
 	for _, o := range opts {
 		o(&options)
@@ -87,7 +95,10 @@ func dail(ctx context.Context, insecure bool, opts ...ClientOption) (*grpc.Clien
 
 	// TODO 客户端默认拦截器
 	ints := []grpc.UnaryClientInterceptor{
-		clientinterptors.TimeoutInterceptor(options.timeout),
+		clientinterceptors.TimeoutInterceptor(options.timeout),
+	}
+	if options.enableTracing {
+		ints = append(ints, otelgrpc.UnaryClientInterceptor())
 	}
 	var streamInts []grpc.StreamClientInterceptor
 	if len(options.unaryInterceptors) > 0 {
