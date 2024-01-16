@@ -38,7 +38,8 @@ type Server struct {
 	transName string
 	trans     ut.Translator
 
-	server *http.Server
+	server      *http.Server
+	serviceName string
 }
 
 func NewServer(opts ...ServerOption) *Server {
@@ -53,12 +54,16 @@ func NewServer(opts ...ServerOption) *Server {
 			7 * 24 * time.Hour,
 			7 * 24 * time.Hour,
 		},
-		Engine:    gin.Default(),
-		transName: "zh",
+		Engine:      gin.Default(),
+		transName:   "zh",
+		serviceName: "micro",
 	}
 	for _, o := range opts {
 		o(srv)
 	}
+
+	srv.Use(mws.TracingHandler(srv.serviceName))
+
 	for _, m := range srv.middlewares {
 		mw, ok := mws.Middlewares[m]
 		if !ok {

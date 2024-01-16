@@ -26,6 +26,12 @@ func WithMode(mode string) ServerOption {
 	}
 }
 
+func WithServiceName(srvName string) ServerOption {
+	return func(s *Server) {
+		s.serviceName = srvName
+	}
+}
+
 func WithMiddlewares(middlewares []string) ServerOption {
 	return func(s *Server) {
 		s.middlewares = middlewares
