@@ -28,6 +28,7 @@ type clientOptions struct {
 	enableTracing      bool
 }
 
+// WithEnableTracing 是否开启链路
 func WithEnableTracing(enable bool) ClientOption {
 	return func(o *clientOptions) {
 		o.enableTracing = enable
