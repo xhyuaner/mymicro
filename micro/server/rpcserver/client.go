@@ -26,12 +26,18 @@ type clientOptions struct {
 	balancerName       string
 	logger             log.LogHelper
 	enableTracing      bool
+	enableMetrics      bool
 }
 
-// WithEnableTracing 是否开启链路
 func WithEnableTracing(enable bool) ClientOption {
 	return func(o *clientOptions) {
 		o.enableTracing = enable
+	}
+}
+
+func WithEnableMetrics(enable bool) ClientOption {
+	return func(o *clientOptions) {
+		o.enableMetrics = enable
 	}
 }
 
@@ -100,6 +106,9 @@ func dail(ctx context.Context, insecure bool, opts ...ClientOption) (*grpc.Clien
 	}
 	if options.enableTracing {
 		ints = append(ints, otelgrpc.UnaryClientInterceptor())
+	}
+	if options.enableMetrics {
+		ints = append(ints, clientinterceptors.PrometheusInterceptor())
 	}
 	var streamInts []grpc.StreamClientInterceptor
 	if len(options.unaryInterceptors) > 0 {

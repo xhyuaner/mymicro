@@ -34,6 +34,8 @@ type Server struct {
 	health   *health.Server
 	metadata *apimetadata.Server
 	endpoint *url.URL
+
+	enableMetrics bool
 }
 
 func (s *Server) Address() string { return s.address }
@@ -73,6 +75,10 @@ func NewServer(opts ...ServerOption) *Server {
 		srvintc.UnaryRecoverInterceptor,
 		srvintc.UnaryTimeoutInterceptor(srv.timeout),
 		otelgrpc.UnaryServerInterceptor(),
+	}
+
+	if srv.enableMetrics {
+		unaryInts = append(unaryInts, srvintc.UnaryPrometheusInterceptor)
 	}
 	if srv.timeout > 0 {
 		unaryInts = append(unaryInts, srvintc.UnaryTimeoutInterceptor(srv.timeout))
@@ -123,6 +129,12 @@ func (s *Server) Stop(_ context.Context) error {
 func WithAddress(address string) ServerOption {
 	return func(s *Server) {
 		s.address = address
+	}
+}
+
+func WithMetrics(metric bool) ServerOption {
+	return func(s *Server) {
+		s.enableMetrics = metric
 	}
 }
 
