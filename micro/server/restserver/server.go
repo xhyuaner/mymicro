@@ -4,15 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/gin-gonic/gin"
-	ut "github.com/go-playground/universal-translator"
-	"mymicro/micro/server/restserver/pprof"
-	"mymicro/micro/server/restserver/validation"
-	"mymicro/pkg/log"
 	"net/http"
 	"time"
 
+	"github.com/gin-gonic/gin"
+	ut "github.com/go-playground/universal-translator"
+	"github.com/penglongli/gin-metrics/ginmetrics"
+
 	mws "mymicro/micro/server/restserver/middlewares"
+	"mymicro/micro/server/restserver/pprof"
+	"mymicro/micro/server/restserver/validation"
+	"mymicro/pkg/log"
 )
 
 type JwtInfo struct {
@@ -27,12 +29,14 @@ type Server struct {
 	port int
 	// 开发模式
 	mode string
-	// 是否开启健康检查
+	// 是否开启健康检查，开启会自动添加 /health 接口
 	enableHealth bool
-	// 是否开启pprof接口
+	// 是否开启pprof接口，开启会自动添加 /debug/pprof 接口
 	enableProfiling bool
-	middlewares     []string
-	jwt             *JwtInfo
+	// 是否开启metrics接口，默认开启，开启会自动添加 /metrics 接口
+	enableMetrics bool
+	middlewares   []string
+	jwt           *JwtInfo
 
 	// 翻译器
 	transName string
@@ -97,6 +101,15 @@ func (s *Server) Start(ctx context.Context) error {
 	// 根据配置初始化pprof路由
 	if s.enableProfiling {
 		pprof.Register(s.Engine)
+	}
+
+	if s.enableMetrics {
+		m := ginmetrics.GetMonitor()
+		m.SetMetricPath("/metrics")
+		m.SetSlowTime(10)
+		m.SetDuration([]float64{0.1, 0.3, 1.2, 5, 10})
+
+		m.Use(s)
 	}
 
 	log.Infof("Rest server is running on port: %d", s.port)

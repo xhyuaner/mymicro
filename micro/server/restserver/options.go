@@ -20,6 +20,12 @@ func WithEnableHealth(enableHealth bool) ServerOption {
 	}
 }
 
+func WithEnableMetrics(enable bool) ServerOption {
+	return func(o *Server) {
+		o.enableMetrics = enable
+	}
+}
+
 func WithMode(mode string) ServerOption {
 	return func(s *Server) {
 		s.mode = mode
