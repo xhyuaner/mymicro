@@ -8,6 +8,8 @@ telemetry:
 	Batcher: jaeger（或者zipkin、otlp）
 */
 
+const TraceName = "xhyuaner"
+
 type Options struct {
 	Name     string `json:"name"`
 	Endpoint string `json:"endpoint"`
