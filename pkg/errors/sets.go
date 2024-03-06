@@ -141,7 +141,7 @@ func (s String) IsSuperset(s2 String) bool {
 
 // Equal returns true if and only if s is equal (as a set) to s2.
 // Two sets are equal if their membership is identical.
-// (In practice, this means same elements, order doesn't matter)
+// (In practice, this means same elements, my-service doesn't matter)
 func (s String) Equal(s2 String) bool {
 	return len(s) == len(s2) && s.IsSuperset(s2)
 }
@@ -162,7 +162,7 @@ func (s String) List() []string {
 	return []string(res)
 }
 
-// UnsortedList returns the slice with contents in random order.
+// UnsortedList returns the slice with contents in random my-service.
 func (s String) UnsortedList() []string {
 	res := make([]string, 0, len(s))
 	for key := range s {
