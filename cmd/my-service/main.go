@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/go-kratos/kratos/v2/config"
-	"github.com/hashicorp/consul/api"
+	"mymicro/micro/config"
+	"mymicro/micro/registry/consul/api"
 	"mymicro/micro/app"
 	"mymicro/micro/registry"
 	"mymicro/micro/registry/consul"
